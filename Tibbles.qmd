@@ -1,0 +1,301 @@
+---
+title: "Tibbles"
+author: "Xinxiu"
+format: html
+editor: visual
+toc: TRUE
+execute:
+  freeze: true
+echo: true
+eval: false
+---
+
+## Quarto
+
+## Running Code
+
+##Task1 _1
+
+```{r}
+library(tibble)
+vehicles <- mtcars %>% as_tibble()
+
+```
+
+##2
+
+```{r}
+vehicles[["cyl"]]
+vehicles[[2]]
+vehicles$cyl
+head(mtcars )
+head(vehicles)
+```
+
+## pipe and placeholders
+
+```{r}
+vehicles %T>% 
+  {print(.[["cyl"]])} %T>%
+  {print(.[[2]])} %>% ### print is function 
+  .$cyl
+```
+
+## print tibble
+
+```{r}
+vehicles
+```
+
+## print the first 30
+
+```{r}
+vehicles %>% head(n = 30)
+```
+
+## Default to print min 15, max 30
+
+```{r}
+options(tibble.print_max = 30, tibble.prin_min = 15)
+```
+
+## chagne vehicles to automobiles
+
+```{r}
+automobiles <- as.data.frame(vehicles)
+head(automobiles)
+```
+
+### Task 2
+
+```{r}
+tab <- tribble(
+  ~id, ~event, ~date,
+  1, 'success', '24-04-2017',
+  2, 'failed', '25-04-2017',
+  3, 'failed', '25-04-2017',
+  4, 'success', '27-04-2017'
+)
+tab
+```
+
+##install packages ##install.packages("microbenchmark") ##library(microbenchmark)
+
+##Task 3
+
+```{r}
+
+test <- replicate(30, sample.int(100))
+microbenchmark::microbenchmark(
+ as.data.frame(test),
+ as_data_frame(test),
+ as_tibble(test)
+
+)
+ test
+```
+
+##test code
+
+```{r}
+tst <- replicate(30, sample(100), simplify = TRUE)
+colnames(tst) = paste0(rep('col', times = dim(tst)[2]), 1:dim(tst)[2]) ## for name
+microbenchmark::microbenchmark(
+  as.data.frame(tst),
+  as_data_frame(tst),
+  as_tibble(tst)
+)
+
+tst
+```
+
+##lazy evaluation
+
+```{r}
+tibble(x = sample((1:100), replace =T), y1 = x+1, y2 = log(x))
+```
+
+###1.3 parsing -need to library(base) to use parse
+
+```{r}
+library(base)
+vec1 <- c('1', '7.2', '3.84', '-5.23')
+vec2 <- c('2', '3,45', '?', '-7,28')
+vec3 <- c('2', '3,45', '?', '-7.28')
+vec4 <- c('barrel: 432.7$', 'liter: 15.42PLN', 'gallon costs approx 32.1SEK', 'sunny, wind gusts up till 55m/s')
+vec5 <- "25 Dec 2015"
+parse_double(vec1)
+parse_integer(vec1)
+parse_integer(paste0(as.integer(vec1))) # Is it the best way? Hint: rounding.
+parse_double(vec2, na = '?', locale = locale(decimal_mark = ','))
+parse_number(vec2, na = '?', locale = locale(decimal_mark = ','))
+guess_parser(vec4)
+parse_guess(vec4)
+# Yes, you can:
+parse_number(vec4)
+parse_date(vec5, format="%d %b %Y")
+parse_date("10_Jul_1410", format="%d%.%b%.%Y")
+
+```
+
+\## NYC flights Challenge ##task1
+
+```{r}
+install.packages('nycflights13')
+
+library('nycflights13')
+library(tidyverse)
+
+??nycflights13
+
+flights
+flights %>% select(-carrier, -arr_time)
+
+flights %>% select(carrier, tailnum, origin)
+
+flights %>% select(-(day:carrier))
+
+flights %>% select(contains("arr-"))
+
+v <- c("arr_time", "sched_arr_time", "arr_delay")
+flights %>% select(all_of(v))
+
+flights %>% select(destination = dest)
+
+flights %>% rename(destinaton = dest)
+
+```
+
+### Task2 Filtering rows
+
+```{r}
+flights %>% filter(arr_delay < 0)
+
+flights %>% filter(is.na(arr_time))
+flights %>% filter(between(dep_delay, 10, 33))
+
+flights %>% slice(1234:1258)
+flights %>% filter(month == 3) %>%
+  group_by(day) %>%
+  sample_n(3) ## slice_sample (n =3)
+
+
+nycflights13::flights %>%
+  filter(month == 1) %>%
+  group_by(carrier) %>%
+  slice_max(dep_delay, n = 5)
+
+nycflights13::flights %>%
+  select(origin, dest) %>%
+  unique() %>%
+  arrange(dest)
+
+nycflights13::flights %>%
+  select(origin, dest) %>%
+  distinct() %>%
+  arrange(dest)
+```
+
+## Task 3: Trans(mutations)
+
+```{r}
+flights %>% mutate(air_spd = distance/(air_time / 60))
+flights %>% transmute(air_spd = distance/(air_time / 60))
+mtcars %>% rownames_to_column('model')
+```
+
+### 2.4 Task 4: Groups and counts
+
+```{r}
+##Use group_by(), summarise() and n() to see how many planes were delayed (departure) every month.
+flights %>%
+  filter(dep_delay > 0) %>%
+  group_by(month) %>%
+  summarise(num_dep_delayed = n())
+## Do the same but using tally() and count().
+
+flights %>%
+  filter(dep_delay > 0) %>%
+  group_by(month) %>%
+  tally()
+
+flights %>%
+  filter(dep_delay > 0) %>%
+  count(month)
+###What was the mean dep_delay per month?
+flights %>%
+  group_by(month) %>%
+  summarise(mean_dep_delay = mean(dep_delay, na.rm = T))
+
+###Count the number of incoming delayed flights from each unique origin and sort origins by this count (descending).
+
+flights %>%
+  filter(arr_delay > 0) %>%
+  group_by(origin) %>%
+  summarise(cnt = n()) %>%
+  arrange(desc(cnt))
+
+## use tally
+
+flights %>%
+  filter(arr_delay > 0) %>%
+  group_by(origin) %>%
+  tally(sort = T)
+
+###Use the wt parameter of count() (works with tally() too) to achieve the same.
+
+flights %>%
+ group_by(month) %>%
+ count(wt = dep_delay/60)
+
+##Run group_size() on carrier what does it return?
+flights %>%
+    group_by(carrier) %>%
+    group_size()
+###Use n_groups() to check the number of unique origin-carrier pairs
+flights %>%
+    group_by(carrier) %>%
+    n_groups()
+
+```
+
+## ungroup
+
+```{r}
+flights %>%
+  group_by(origin) %>%
+  mutate(mean_delay_orig = (mean(dep_delay, na.rm = T) + mean(arr_delay, na.rm = T)) / 2) %>%
+  ungroup() %>%
+  group_by(carrier) %>%
+  mutate(mean_delay_carr = (mean(dep_delay, na.rm = T) + mean(arr_delay, na.rm = T)) / 2) %>%
+  select(origin, carrier, mean_delay_orig, mean_delay_carr)
+```
+
+###Task 5: Joins ##Given the following tibbles set1 and set2:
+
+```{r}
+set1 <- tribble(
+  ~id, ~color,
+  'id1', 'grey',
+  'id1', 'red',
+  'id2', 'green',
+  'id3', 'blue'
+)
+
+set2 <- tribble(
+  ~id, ~size,
+  'id2', 'XL',
+  'id3', 'M',
+  'id4', 'M'
+)
+
+set1
+set2
+```
+
+### anti_join
+
+```{r}
+anti_join(set1, set2, by = 'id')
+anti_join(set2, set1, by = "id")
+```
